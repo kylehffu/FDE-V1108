@@ -195,7 +195,7 @@ export const AiTacticalDrawer: React.FC<AiTacticalDrawerProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/gemini/deduce', {
+      const response = await fetch('/api/ai/deduce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

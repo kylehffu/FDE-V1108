@@ -32,6 +32,141 @@ if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
   });
 }
 
+// ==============================================================================
+// Persistent Runtime Configuration for Universal Multi-LLM API Gateway
+// ==============================================================================
+interface LlmRuntimeConfig {
+  provider: 'gemini' | 'openai-compatible' | 'deepseek' | 'qwen' | 'custom' | 'mock';
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  temperature: number;
+}
+
+const CONFIG_FILE = path.join(__dirname, '.llm-config.json');
+
+function loadLlmConfig(): LlmRuntimeConfig {
+  const envProvider = (process.env.LLM_PROVIDER as any) || (process.env.GEMINI_API_KEY ? 'gemini' : 'deepseek');
+  const envApiKey =
+    process.env.LLM_API_KEY ||
+    process.env.DEEPSEEK_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    '';
+  const envBaseUrl =
+    process.env.LLM_BASE_URL ||
+    (envProvider === 'deepseek' ? 'https://api.deepseek.com' : 'https://api.openai.com/v1');
+  const envModel =
+    process.env.LLM_MODEL ||
+    (envProvider === 'gemini'
+      ? 'gemini-3.1-flash-lite'
+      : envProvider === 'deepseek'
+      ? 'deepseek-chat'
+      : 'gpt-4o-mini');
+
+  const defaultConfig: LlmRuntimeConfig = {
+    provider: envProvider,
+    apiKey: envApiKey,
+    baseUrl: envBaseUrl,
+    model: envModel,
+    temperature: 0.3,
+  };
+
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      return { ...defaultConfig, ...data };
+    }
+  } catch (err) {
+    console.warn('[Config] Failed to load .llm-config.json, using defaults:', err);
+  }
+  return defaultConfig;
+}
+
+function saveLlmConfig(config: LlmRuntimeConfig) {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Config] Failed to save .llm-config.json:', err);
+  }
+}
+
+let activeLlmConfig = loadLlmConfig();
+
+// Unified caller supporting Gemini native, OpenAI-compatible (DeepSeek, Qwen / DashScope, OpenAI, Ollama, vLLM)
+async function callUniversalLlm(prompt: string, configOverride?: Partial<LlmRuntimeConfig>): Promise<string> {
+  const cfg = { ...activeLlmConfig, ...configOverride };
+
+  if (cfg.provider === 'mock' || !cfg.apiKey) {
+    throw new Error('LLM provider is mock or missing API key; falling back to heuristic OSINT engine');
+  }
+
+  // 1. Google Gemini Native SDK
+  if (cfg.provider === 'gemini') {
+    const client = new GoogleGenAI({
+      apiKey: cfg.apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
+    const response = await withTimeout(
+      client.models.generateContent({
+        model: cfg.model || 'gemini-3.1-flash-lite',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: cfg.temperature ?? 0.3,
+        },
+      }),
+      8500
+    );
+    return (response.text || '').trim();
+  }
+
+  // 2. OpenAI-Compatible (DeepSeek, Qwen / DashScope, OpenAI, Ollama, vLLM, OneAPI)
+  let endpoint = cfg.baseUrl.replace(/\/+$/, '');
+  if (!endpoint.endsWith('/chat/completions')) {
+    endpoint = `${endpoint}/chat/completions`;
+  }
+
+  const payload: any = {
+    model: cfg.model,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert consultative sales co-pilot and biomedical intelligence consultant. Output pure valid JSON only when requested, with no markdown codeblocks.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    temperature: cfg.temperature ?? 0.3,
+  };
+
+  const response = await withTimeout(
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    }),
+    9500
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`LLM API returned ${response.status}: ${errText}`);
+  }
+
+  const data: any = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  return content.trim();
+}
+
+
 // Circuit-breaker cooldown when upstream Gemini API hits rate limits (429 RESOURCE_EXHAUSTED)
 let geminiQuotaCooldownUntil = 0;
 
@@ -165,7 +300,63 @@ function buildDynamicDeduction(params: {
 }
 
 // API endpoint for AI-powered FDE Consultative Sales Deduction
-app.post('/api/gemini/deduce', async (req, res) => {
+// ==============================================================================
+// REST Endpoints for Runtime LLM Configuration & Testing
+// ==============================================================================
+app.get('/api/llm/config', (req, res) => {
+  const maskedKey = activeLlmConfig.apiKey
+    ? `${activeLlmConfig.apiKey.slice(0, 4)}...${activeLlmConfig.apiKey.slice(-4)}`
+    : '';
+  res.json({
+    success: true,
+    data: {
+      provider: activeLlmConfig.provider,
+      model: activeLlmConfig.model,
+      baseUrl: activeLlmConfig.baseUrl,
+      temperature: activeLlmConfig.temperature,
+      hasApiKey: !!activeLlmConfig.apiKey,
+      apiKeyMasked: maskedKey,
+    },
+    // Also provide flat properties for compatibility
+    provider: activeLlmConfig.provider,
+    model: activeLlmConfig.model,
+    baseUrl: activeLlmConfig.baseUrl,
+    temperature: activeLlmConfig.temperature,
+    hasKey: !!activeLlmConfig.apiKey,
+    maskedKey,
+  });
+});
+
+app.post('/api/llm/config', (req, res) => {
+  const { provider, apiKey, baseUrl, model, temperature } = req.body;
+  if (provider) activeLlmConfig.provider = provider;
+  if (typeof apiKey === 'string') {
+    if (apiKey.trim()) {
+      activeLlmConfig.apiKey = apiKey.trim();
+    }
+  }
+  if (baseUrl) activeLlmConfig.baseUrl = baseUrl.trim();
+  if (model) activeLlmConfig.model = model.trim();
+  if (typeof temperature === 'number') activeLlmConfig.temperature = temperature;
+
+  saveLlmConfig(activeLlmConfig);
+  res.json({ success: true, config: { ...activeLlmConfig, apiKey: '***' } });
+});
+
+app.post('/api/llm/test', async (req, res) => {
+  const testCfg = req.body;
+  try {
+    const testPrompt = 'Respond with JSON only: {"status": "ok", "provider": "connected", "message": "API connected successfully"}';
+    const raw = await callUniversalLlm(testPrompt, testCfg);
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
+    res.json({ success: true, raw: cleaned });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || String(err) });
+  }
+});
+
+async function handleDeductionRequest(req: express.Request, res: express.Response) {
+
   const {
     institution = '目标医院/高校',
     department = '相关科室/实验室',
@@ -234,35 +425,25 @@ app.post('/api/gemini/deduce', async (req, res) => {
 }
 `;
 
-  if (canCallGemini() && aiClient) {
-    try {
-      const response = await withTimeout(
-        aiClient.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        }),
-        4500
-      );
-
-      const responseText = (response.text || '').trim();
-      const cleaned = responseText
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/, '');
-      const parsed = JSON.parse(cleaned);
-      if (parsed && parsed.needAnalysis) {
-        return res.json({ success: true, source: 'gemini-3.1-flash-lite', data: parsed });
-      }
-    } catch (err: any) {
-      recordGeminiFallback('Deduce', err);
+  try {
+    const responseText = await callUniversalLlm(prompt);
+    const cleaned = responseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/, '');
+    const parsed = JSON.parse(cleaned);
+    if (parsed && parsed.needAnalysis) {
+      return res.json({ success: true, source: activeLlmConfig.provider + ':' + activeLlmConfig.model, data: parsed });
     }
+  } catch (err: any) {
+    recordGeminiFallback('Deduce', err);
   }
 
   return res.json({ success: true, source: 'dynamic-expert-engine', data: fallbackData });
-});
+}
+
+app.post('/api/ai/deduce', handleDeductionRequest);
+app.post('/api/gemini/deduce', handleDeductionRequest);
 
 // Helper: Top-Down Funnel (Institution -> Department -> Phonetic/Homophone & Prefix Resolution)
 function buildFunnelMatchedCandidates(params: {
@@ -2758,18 +2939,22 @@ ${colleagueHintText}
   ]
 }
 `;
-      const response = await withTimeout(
-        aiClient.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: matchPrompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-          },
-        }),
-        6500
-      );
-
-      const rawText = (response.text || '').trim();
+      let rawText = '';
+      if (activeLlmConfig.provider === 'gemini' && aiClient) {
+        const response = await withTimeout(
+          aiClient.models.generateContent({
+            model: activeLlmConfig.model || 'gemini-3-flash-preview',
+            contents: matchPrompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+            },
+          }),
+          6500
+        );
+        rawText = (response.text || '').trim();
+      } else {
+        rawText = await callUniversalLlm(matchPrompt);
+      }
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
       if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length > 0) {
@@ -3676,19 +3861,25 @@ ${paperSummaryForPrompt}
     scholarName.includes('欧阳');
 
   let aiSynthesis: any = null;
-  if (canCallGemini() && aiClient && !isPreVerifiedCrawlScholar) {
+  if (!isPreVerifiedCrawlScholar) {
     try {
-      const response = await withTimeout(
-        aiClient.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: aiPrompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        }),
-        4500
-      );
-      const cleaned = (response.text || '{}')
+      let rawText = '';
+      if (activeLlmConfig.provider === 'gemini' && aiClient) {
+        const response = await withTimeout(
+          aiClient.models.generateContent({
+            model: activeLlmConfig.model || 'gemini-3-flash-preview',
+            contents: aiPrompt,
+            config: {
+              responseMimeType: 'application/json',
+            },
+          }),
+          4500
+        );
+        rawText = response.text || '{}';
+      } else {
+        rawText = await callUniversalLlm(aiPrompt);
+      }
+      const cleaned = (rawText || '{}')
         .trim()
         .replace(/^```json\s*/i, '')
         .replace(/^```\s*/i, '')
@@ -4632,7 +4823,7 @@ app.post('/api/battle-guide/synthesize', async (req, res) => {
     scholarName.includes('刘敏') ||
     scholarName.includes('欧阳');
 
-  if (canCallGemini() && aiClient && !scenario.isUnreachableLeader && !isPreVerifiedSynthScholar) {
+  if (!scenario.isUnreachableLeader && !isPreVerifiedSynthScholar) {
     try {
       const llmPrompt = `
 你是一位深谙生命科学B端第一性原理的实战派销售参谋。请结合从【爬虫雷达】、【双图谱底座】、【搞定人智库】提取的数据，特别是围绕销售刚刚更新的【销售已掌握实情（核心破局前提）】，为以下目标客户生成一份高针对性的《销售作战行动清单》JSON数据：
@@ -4768,19 +4959,25 @@ app.post('/api/battle-guide/synthesize', async (req, res) => {
 }
 注意：绝对不要提及任何销售书籍名称或外来理论人名，全部用最接地气的生命科学一线销售大白话输出。`;
 
-      const response = await withTimeout(
-        aiClient.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: llmPrompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        }),
-        5500
-      );
+      let rawText = '';
+      if (activeLlmConfig.provider === 'gemini' && aiClient) {
+        const response = await withTimeout(
+          aiClient.models.generateContent({
+            model: activeLlmConfig.model || 'gemini-3-flash-preview',
+            contents: llmPrompt,
+            config: {
+              responseMimeType: 'application/json',
+            },
+          }),
+          5500
+        );
+        rawText = response.text || '';
+      } else {
+        rawText = await callUniversalLlm(llmPrompt);
+      }
 
-      if (response.text) {
-        const cleaned = response.text
+      if (rawText) {
+        const cleaned = rawText
           .replace(/^```json\s*/i, '')
           .replace(/```\s*$/i, '')
           .trim();
@@ -5609,23 +5806,28 @@ app.post('/api/intel/deep-profile', async (req, res) => {
   ]
 }`;
 
-      const response = await withTimeout(
-        aiClient.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: searchPrompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-          },
-        }),
-        8500
-      );
-
-      const rawText = (response.text || '').trim();
+      let rawText = '';
+      let geminiResponse: any = null;
+      if (activeLlmConfig.provider === 'gemini' && aiClient) {
+        geminiResponse = await withTimeout(
+          aiClient.models.generateContent({
+            model: activeLlmConfig.model || 'gemini-3-flash-preview',
+            contents: searchPrompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+            },
+          }),
+          8500
+        );
+        rawText = (geminiResponse.text || '').trim();
+      } else {
+        rawText = await callUniversalLlm(searchPrompt);
+      }
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         const groundingChunks =
-          response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+          geminiResponse?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const webSources = groundingChunks
           .map((c: any) => ({
             title: c?.web?.title || '公开网络核验记录',

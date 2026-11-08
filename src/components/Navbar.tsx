@@ -1,5 +1,6 @@
-import React from 'react';
-import { Layers, Radar, Network, Compass, Sparkles, Download, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Layers, Radar, Network, Compass, Sparkles, Download, Check, Settings, Cpu } from 'lucide-react';
+import { LlmSettingsModal } from './LlmSettingsModal';
 
 interface NavbarProps {
   activeTab: string;
@@ -18,6 +19,36 @@ export const Navbar: React.FC<NavbarProps> = ({
   isDownloadingSource = false,
   sourceDownloaded = false,
 }) => {
+  const [isLlmModalOpen, setIsLlmModalOpen] = useState(false);
+  const [activeModelLabel, setActiveModelLabel] = useState<string>('LLM配置');
+
+  const fetchLlmStatus = async () => {
+    try {
+      const res = await fetch('/api/llm/config');
+      const json = await res.json();
+      if (json && json.provider) {
+        const p = json.provider;
+        const providerName =
+          p === 'deepseek'
+            ? 'DeepSeek'
+            : p === 'gemini'
+            ? 'Gemini'
+            : p === 'qwen'
+            ? '通义千问'
+            : p === 'openai-compatible'
+            ? 'OpenAI'
+            : '自定义';
+        setActiveModelLabel(`${providerName} · ${json.model}`);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchLlmStatus();
+  }, []);
+
   const navItems = [
     { id: 'battle-guide', label: '客户拜访底牌' },
     { id: 'intel-radar', label: '在研项目与报计划' },
@@ -74,8 +105,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Zone 3: Download Updated Source + Primary Action */}
+          {/* Zone 3: Model Config + Download Updated Source + Primary Action */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Model Selector / Settings Button */}
+            <button
+              onClick={() => setIsLlmModalOpen(true)}
+              className="px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-cyan-300 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="配置 AI 大模型 API 网关 (DeepSeek, 通义千问, OpenAI, Gemini等)"
+            >
+              <Cpu className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline max-w-[130px] truncate">{activeModelLabel}</span>
+              <span className="sm:hidden font-mono text-[11px]">LLM</span>
+              <Settings className="w-3 h-3 text-slate-400" />
+            </button>
+
             <button
               onClick={onDownloadSource}
               disabled={isDownloadingSource}
@@ -140,8 +183,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </span>
         </button>
       </nav>
+
+      {/* LLM Settings Modal */}
+      <LlmSettingsModal
+        isOpen={isLlmModalOpen}
+        onClose={() => setIsLlmModalOpen(false)}
+        onConfigSaved={() => {
+          fetchLlmStatus();
+        }}
+      />
     </>
   );
 };
-
-
