@@ -1,0 +1,8 @@
+{
+  "name": "Remix FDE 顾问式销售作战系统 (V2.0)",
+  "description": "面向生命科学与技术型B端的 FDE 顾问式销售作战系统，基于双图谱认知底座与三级商机裂变中枢。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
