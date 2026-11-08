@@ -7,11 +7,13 @@ Generates:
    - public/pwa-512x512.png
    - public/pwa-maskable-512x512.png
    - public/apple-touch-icon.png (180x180)
-2. A genuine, spec-compliant, signed Android WebView APK:
+2. A genuine, standalone, spec-compliant, signed Android APK:
    - public/FDE-Sales-Copilot-v2.0.apk
-   Featuring adaptive WebView (JavaScript, DOMStorage, WideViewPort, OverviewMode,
-   orientation/screenSize adaptive configChanges), Binary AXML AndroidManifest.xml,
-   Dalvik classes.dex, and RSA-2048 v1 (MANIFEST.MF/CERT.SF/CERT.RSA) + APK Signature Scheme v2.
+   Featuring 100% offline standalone embedded assets (file:///android_asset/index.html),
+   adaptive hardware-accelerated WebView (JavaScript, DOMStorage, WideViewPort, OverviewMode,
+   AllowFileAccess, AllowFileAccessFromFileURLs, AllowUniversalAccessFromFileURLs),
+   Binary AXML AndroidManifest.xml, Dalvik classes.dex,
+   RSA-2048 v1 (JAR Signature Scheme) + APK Signature Scheme v2.
 """
 
 import os
@@ -23,10 +25,13 @@ import subprocess
 import tempfile
 import zipfile
 
-PUBLIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+PUBLIC_DIR = os.path.join(PROJECT_DIR, "public")
+DIST_DIR = os.path.join(PROJECT_DIR, "dist")
 os.makedirs(PUBLIC_DIR, exist_ok=True)
 
-APP_URL = "https://ais-pre-lfnhxod6gtdgymavhjdscm-102222692521.asia-northeast1.run.app"
+APP_URL = "file:///android_asset/index.html"
 
 
 # ==============================================================================
@@ -36,131 +41,137 @@ def write_svg_icon(path: str):
     svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#020617" />
-      <stop offset="50%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#083344" />
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#091e3a"/>
+      <stop offset="100%" stop-color="#022c44"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22d3ee" />
-      <stop offset="100%" stop-color="#10b981" />
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="blue-edge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)" />
-  <rect x="28" y="28" width="456" height="456" rx="92" fill="none" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="6" />
-  <!-- Topology Network Nodes -->
-  <line x1="256" y1="128" x2="156" y2="256" stroke="#22d3ee" stroke-width="10" stroke-linecap="round" opacity="0.85" />
-  <line x1="256" y1="128" x2="356" y2="256" stroke="#22d3ee" stroke-width="10" stroke-linecap="round" opacity="0.85" />
-  <line x1="156" y1="256" x2="256" y2="372" stroke="#10b981" stroke-width="10" stroke-linecap="round" opacity="0.9" />
-  <line x1="356" y1="256" x2="256" y2="372" stroke="#22d3ee" stroke-width="8" stroke-dasharray="14 10" stroke-linecap="round" opacity="0.7" />
-  <circle cx="256" cy="128" r="32" fill="#0f172a" stroke="#22d3ee" stroke-width="12" />
-  <circle cx="156" cy="256" r="30" fill="#0f172a" stroke="#10b981" stroke-width="12" />
-  <circle cx="356" cy="256" r="28" fill="#0f172a" stroke="#38bdf8" stroke-width="10" />
-  <circle cx="256" cy="372" r="34" fill="url(#accent)" />
-  <text x="256" y="456" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="44" fill="#f8fafc" letter-spacing="4">FDE 2B</text>
-</svg>"""
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#0e7490" stroke-width="2" stroke-dasharray="8 8" opacity="0.4"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#22d3ee" stroke-width="2" opacity="0.3"/>
+  <line x1="256" y1="120" x2="170" y2="210" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="256" y1="120" x2="342" y2="210" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="170" y1="210" x2="200" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="342" y1="210" x2="312" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="200" y1="330" x2="312" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="170" y1="210" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="342" y1="210" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="200" y1="330" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="312" y1="330" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="256" y1="120" x2="256" y2="256" stroke="#22d3ee" stroke-width="3" opacity="0.9"/>
+  <circle cx="256" cy="120" r="18" fill="url(#cyan-glow)"/>
+  <circle cx="170" cy="210" r="15" fill="#38bdf8"/>
+  <circle cx="342" cy="210" r="15" fill="#38bdf8"/>
+  <circle cx="200" cy="330" r="15" fill="#0284c7"/>
+  <circle cx="312" cy="330" r="15" fill="#0284c7"/>
+  <circle cx="256" cy="256" r="26" fill="url(#cyan-glow)"/>
+  <path d="M256 244 L259 253 L268 256 L259 259 L256 268 L253 259 L244 256 L253 253 Z" fill="#ffffff"/>
+  <text x="256" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="800" fill="#22d3ee" text-anchor="middle" letter-spacing="4">FDE 销售参谋</text>
+  <text x="256" y="454" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="#94a3b8" text-anchor="middle" letter-spacing="2">全行业 2B 顾问式作战底座</text>
+</svg>
+"""
     with open(path, "w", encoding="utf-8") as f:
         f.write(svg)
 
 
 def create_png(width: int, height: int, maskable: bool = False) -> bytes:
-    """Renders a sleek dark-slate + cyan/emerald network emblem PNG in pure Python."""
-    raw_rows = bytearray()
+    raw_data = bytearray()
     cx, cy = width / 2.0, height / 2.0
-    scale = 0.78 if maskable else 0.92
-    r_outer = (width * 0.36) * scale
-    r_inner = (width * 0.14) * scale
+    r_outer = min(width, height) * (0.38 if maskable else 0.44)
+    ring_thick = max(1.5, width * 0.008)
 
-    # Node centers relative to center
     nodes = [
-        (cx, cy - r_outer * 0.65, width * 0.065 * scale, (34, 211, 238)),     # Top L1 node (Cyan)
-        (cx - r_outer * 0.62, cy + r_outer * 0.05, width * 0.065 * scale, (16, 185, 129)),  # Left L2 node (Emerald)
-        (cx + r_outer * 0.62, cy + r_outer * 0.05, width * 0.060 * scale, (56, 189, 248)),  # Right L3 node (Sky)
-        (cx, cy + r_outer * 0.68, width * 0.072 * scale, (34, 211, 238)),     # Bottom L4 node (Cyan)
+        (cx, cy - r_outer * 0.68, 0.07),
+        (cx - r_outer * 0.55, cy - r_outer * 0.15, 0.055),
+        (cx + r_outer * 0.55, cy - r_outer * 0.15, 0.055),
+        (cx - r_outer * 0.35, cy + r_outer * 0.55, 0.055),
+        (cx + r_outer * 0.35, cy + r_outer * 0.55, 0.055),
+        (cx, cy, 0.10),
     ]
 
     edges = [
         (nodes[0][0], nodes[0][1], nodes[1][0], nodes[1][1]),
         (nodes[0][0], nodes[0][1], nodes[2][0], nodes[2][1]),
         (nodes[1][0], nodes[1][1], nodes[3][0], nodes[3][1]),
-        (nodes[2][0], nodes[2][1], nodes[3][0], nodes[3][1]),
+        (nodes[2][0], nodes[2][1], nodes[4][0], nodes[4][1]),
+        (nodes[3][0], nodes[3][1], nodes[4][0], nodes[4][1]),
+        (nodes[0][0], nodes[0][1], nodes[5][0], nodes[5][1]),
+        (nodes[1][0], nodes[1][1], nodes[5][0], nodes[5][1]),
+        (nodes[2][0], nodes[2][1], nodes[5][0], nodes[5][1]),
+        (nodes[3][0], nodes[3][1], nodes[5][0], nodes[5][1]),
+        (nodes[4][0], nodes[4][1], nodes[5][0], nodes[5][1]),
     ]
 
-    line_thick = max(2.0, width * 0.018 * scale)
-    ring_thick = max(2.0, width * 0.015 * scale)
-
     for y in range(height):
-        raw_rows.append(0)  # PNG filter type 0 (None)
+        raw_data.append(0)  # filter type None
         ny = y / float(height)
         for x in range(width):
             nx = x / float(width)
-            # Base dark gradient (#020617 -> #0f172a -> #083344)
             r = int(2 + 12 * nx + 6 * ny)
             g = int(6 + 24 * nx + 38 * ny)
             b = int(23 + 35 * nx + 45 * ny)
 
-            # Subtle radar ring
             dist_center = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
             if abs(dist_center - r_outer * 0.85) < ring_thick * 0.7:
                 r, g, b = 14, 116, 144
 
-            # Draw edges
             for x1, y1, x2, y2 in edges:
                 dx, dy = x2 - x1, y2 - y1
-                length_sq = dx * dx + dy * dy
-                if length_sq > 0:
-                    t = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / length_sq))
-                    px, py = x1 + t * dx, y1 + t * dy
-                    d = ((x - px) ** 2 + (y - py) ** 2) ** 0.5
-                    if d <= line_thick:
+                seg_len2 = dx * dx + dy * dy
+                if seg_len2 > 0:
+                    t = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / seg_len2))
+                    proj_x = x1 + t * dx
+                    proj_y = y1 + t * dy
+                    d = ((x - proj_x) ** 2 + (y - proj_y) ** 2) ** 0.5
+                    if d < ring_thick * 0.8:
                         r, g, b = 34, 211, 238
 
-            # Draw nodes
-            for ncx, ncy, nr, (cr, cg, cb) in nodes:
-                nd = ((x - ncx) ** 2 + (y - ncy) ** 2) ** 0.5
-                if nd <= nr:
-                    if nd <= nr * 0.52:
-                        r, g, b = 15, 23, 42
+            for nx_c, ny_c, nr_scale in nodes:
+                nr = r_outer * nr_scale
+                d = ((x - nx_c) ** 2 + (y - ny_c) ** 2) ** 0.5
+                if d <= nr:
+                    if (nx_c, ny_c) == (cx, cy):
+                        if d <= nr * 0.3:
+                            r, g, b = 255, 255, 255
+                        else:
+                            r, g, b = 34, 211, 238
                     else:
-                        r, g, b = cr, cg, cb
+                        r, g, b = 56, 189, 248
 
-            raw_rows.extend((r, g, b, 255))
+            raw_data.extend((r & 0xFF, g & 0xFF, b & 0xFF, 255))
 
-    def make_chunk(chunk_type: bytes, data: bytes) -> bytes:
-        crc = zlib.crc32(chunk_type + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", crc)
+    compressed = zlib.compress(bytes(raw_data), 9)
+
+    def png_chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
 
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
-    idat = zlib.compress(bytes(raw_rows), 9)
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + make_chunk(b"IHDR", ihdr)
-        + make_chunk(b"IDAT", idat)
-        + make_chunk(b"IEND", b"")
-    )
+    return b"\x89PNG\r\n\x1a\n" + png_chunk(b"IHDR", ihdr) + png_chunk(b"IDAT", compressed) + png_chunk(b"IEND", b"")
 
 
 # ==============================================================================
-# PART 2: Binary AndroidManifest.xml (AXML) Builder
+# PART 2: Build Android Binary XML (AXML)
 # ==============================================================================
 def build_binary_axml() -> bytes:
-    """
-    Constructs a valid binary AndroidManifest.xml (ResXMLTree) for package
-    com.fde.salescopilot with MainActivity, INTERNET permission, hardwareAcceleration,
-    and adaptive screen configChanges.
-    """
-    # Resource IDs in Android SDK must have their corresponding attribute names
-    # at the exact beginning of the string pool in matching order.
     res_attr_strings = [
-        "label",                # 0: 0x01010001
-        "name",                 # 1: 0x01010003
-        "exported",             # 2: 0x01010010
-        "configChanges",        # 3: 0x0101001f
-        "minSdkVersion",        # 4: 0x0101020c
-        "versionCode",          # 5: 0x0101021b
-        "versionName",          # 6: 0x0101021c
-        "targetSdkVersion",     # 7: 0x01010270
-        "hardwareAccelerated",  # 8: 0x010102d3
-        "usesCleartextTraffic", # 9: 0x010104ec
+        "theme",
+        "label",
+        "name",
+        "exported",
+        "configChanges",
+        "minSdkVersion",
+        "versionCode",
+        "targetSdkVersion",
+        "hardwareAccelerated",
+        "usesCleartextTraffic",
     ]
     res_ids = [
         0x01010001,
@@ -176,31 +187,30 @@ def build_binary_axml() -> bytes:
     ]
 
     other_strings = [
-        "android",                                    # 10
-        "http://schemas.android.com/apk/res/android", # 11
-        "",                                           # 12
-        "manifest",                                   # 13
-        "package",                                    # 14
-        "com.fde.salescopilot",                       # 15
-        "2.0.0",                                      # 16
-        "uses-sdk",                                   # 17
-        "uses-permission",                            # 18
-        "android.permission.INTERNET",                # 19
-        "application",                                # 20
-        "FDE 随身销售参谋",                             # 21
-        "activity",                                   # 22
-        "com.fde.salescopilot.MainActivity",          # 23
-        "intent-filter",                              # 24
-        "action",                                     # 25
-        "android.intent.action.MAIN",                 # 26
-        "category",                                   # 27
-        "android.intent.category.LAUNCHER",           # 28
+        "android",
+        "http://schemas.android.com/apk/res/android",
+        "",
+        "manifest",
+        "package",
+        "com.fde.salescopilot",
+        "2.0.0",
+        "uses-sdk",
+        "uses-permission",
+        "android.permission.INTERNET",
+        "application",
+        "FDE 随身销售参谋",
+        "activity",
+        "com.fde.salescopilot.MainActivity",
+        "intent-filter",
+        "action",
+        "android.intent.action.MAIN",
+        "category",
+        "android.intent.category.LAUNCHER",
     ]
 
     all_strings = res_attr_strings + other_strings
     idx = {s: i for i, s in enumerate(all_strings)}
 
-    # Build UTF-16LE String Pool Chunk (RES_STRING_POOL_TYPE = 0x0001)
     encoded_strings = []
     offsets = []
     cur_offset = 0
@@ -224,241 +234,134 @@ def build_binary_axml() -> bytes:
     string_pool_chunk = (
         struct.pack(
             "<HHIIIII",
-            0x0001,          # RES_STRING_POOL_TYPE
-            header_size,     # headerSize = 28
-            pool_chunk_size, # size
-            string_count,    # stringCount
-            0,               # styleCount
-            0,               # flags (0 = UTF-16)
-            strings_start,   # stringsStart
+            0x0001,
+            header_size,
+            pool_chunk_size,
+            string_count,
+            0,
+            0,
+            strings_start,
         )
-        + struct.pack("<I", 0)  # stylesStart
+        + struct.pack("<I", 0)
         + b"".join(struct.pack("<I", o) for o in offsets)
         + strings_blob
     )
 
-    # Resource Map Chunk (RES_XML_RESOURCE_MAP_TYPE = 0x0180)
-    res_map_size = 8 + 4 * len(res_ids)
-    res_map_chunk = struct.pack("<HHI", 0x0180, 8, res_map_size) + b"".join(
-        struct.pack("<I", rid) for rid in res_ids
-    )
+    res_map_data = b"".join(struct.pack("<I", rid) for rid in res_ids)
+    res_map_chunk = struct.pack("<HHI", 0x0180, 8, 8 + len(res_map_data)) + res_map_data
 
-    # Helper functions for XML nodes
-    NS_ANDROID = idx["http://schemas.android.com/apk/res/android"]
-    NS_NONE = 0xFFFFFFFF
+    xml_chunks = []
 
-    TYPE_STRING = 0x03
-    TYPE_INT_DEC = 0x10
-    TYPE_INT_HEX = 0x11
-    TYPE_INT_BOOLEAN = 0x12
-
-    def make_attr(ns: int, name_idx: int, raw_val: int, val_type: int, data: int) -> bytes:
-        return struct.pack(
-            "<IIIHBBI",
-            ns,
-            name_idx,
-            raw_val,
-            8,         # size of Res_value
-            0,         # res0
-            val_type,
-            data,
-        )
-
-    def start_ns(prefix_idx: int, uri_idx: int, line: int = 2) -> bytes:
+    def start_ns(prefix_idx: int, uri_idx: int, line: int = 1) -> bytes:
         return struct.pack("<HHIIII", 0x0100, 16, 24, line, 0xFFFFFFFF, prefix_idx) + struct.pack("<I", uri_idx)
 
     def end_ns(prefix_idx: int, uri_idx: int, line: int = 20) -> bytes:
         return struct.pack("<HHIIII", 0x0101, 16, 24, line, 0xFFFFFFFF, prefix_idx) + struct.pack("<I", uri_idx)
 
-    def start_elem(name_idx: int, attrs: list, line: int = 2) -> bytes:
-        attr_bytes = b"".join(attrs)
-        chunk_size = 36 + len(attr_bytes)
-        return (
-            struct.pack(
-                "<HHIIIIIHHHHHH",
-                0x0102,        # RES_XML_START_ELEMENT_TYPE
-                16,            # headerSize
-                chunk_size,
-                line,
-                0xFFFFFFFF,    # comment
-                NS_NONE,       # namespace
-                name_idx,
-                20,            # attributeStart
-                20,            # attributeSize
-                len(attrs),    # attributeCount
-                0,             # idIndex
-                0,             # classIndex
-                0,             # styleIndex
-            )
-            + attr_bytes
-        )
+    def start_elem(name_idx: int, attrs: list, line: int = 1) -> bytes:
+        attr_data = b""
+        for uri_id, name_id, raw_str_id, typed_val in attrs:
+            attr_data += struct.pack("<III", uri_id, name_id, raw_str_id & 0xFFFFFFFF) + typed_val
+        chunk_len = 36 + len(attr_data)
+        return struct.pack(
+            "<HHIIIIHHHHHH",
+            0x0102,
+            36,
+            chunk_len,
+            line,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            name_idx,
+            0x0014,
+            20,
+            len(attrs),
+            0,
+            0,
+        ) + attr_data
 
-    def end_elem(name_idx: int, line: int = 20) -> bytes:
-        return struct.pack("<HHIIIII", 0x0103, 16, 24, line, 0xFFFFFFFF, NS_NONE, name_idx)
+    def end_elem(name_idx: int, line: int = 1) -> bytes:
+        return struct.pack("<HHIIIIII", 0x0103, 16, 24, line, 0xFFFFFFFF, 0xFFFFFFFF, name_idx, 0)
 
-    xml_chunks = []
-    xml_chunks.append(start_ns(idx["android"], NS_ANDROID, 2))
+    def val_string(str_idx: int) -> bytes:
+        return struct.pack("<HBBI", 8, 0, 0x03, str_idx)
 
-    # <manifest package="com.fde.salescopilot" android:versionCode="20" android:versionName="2.0.0">
-    xml_chunks.append(
-        start_elem(
-            idx["manifest"],
-            [
-                make_attr(NS_ANDROID, idx["versionCode"], 0xFFFFFFFF, TYPE_INT_DEC, 20),
-                make_attr(NS_ANDROID, idx["versionName"], idx["2.0.0"], TYPE_STRING, idx["2.0.0"]),
-                make_attr(NS_NONE, idx["package"], idx["com.fde.salescopilot"], TYPE_STRING, idx["com.fde.salescopilot"]),
-            ],
-            2,
-        )
-    )
+    def val_int(num: int) -> bytes:
+        return struct.pack("<HBBI", 8, 0, 0x10, num)
 
-    # <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="28" />
-    xml_chunks.append(
-        start_elem(
-            idx["uses-sdk"],
-            [
-                make_attr(NS_ANDROID, idx["minSdkVersion"], 0xFFFFFFFF, TYPE_INT_DEC, 21),
-                make_attr(NS_ANDROID, idx["targetSdkVersion"], 0xFFFFFFFF, TYPE_INT_DEC, 28),
-            ],
-            4,
-        )
-    )
-    xml_chunks.append(end_elem(idx["uses-sdk"], 4))
+    def val_bool(b: bool) -> bytes:
+        return struct.pack("<HBBI", 8, 0, 0x12, 0xFFFFFFFF if b else 0)
 
-    # <uses-permission android:name="android.permission.INTERNET" />
-    xml_chunks.append(
-        start_elem(
-            idx["uses-permission"],
-            [
-                make_attr(
-                    NS_ANDROID,
-                    idx["name"],
-                    idx["android.permission.INTERNET"],
-                    TYPE_STRING,
-                    idx["android.permission.INTERNET"],
-                )
-            ],
-            6,
-        )
-    )
-    xml_chunks.append(end_elem(idx["uses-permission"], 6))
+    def val_hex(h: int) -> bytes:
+        return struct.pack("<HBBI", 8, 0, 0x11, h)
 
-    # <application android:label="FDE 随身销售参谋" android:hardwareAccelerated="true" android:usesCleartextTraffic="true">
-    xml_chunks.append(
-        start_elem(
-            idx["application"],
-            [
-                make_attr(NS_ANDROID, idx["label"], idx["FDE 随身销售参谋"], TYPE_STRING, idx["FDE 随身销售参谋"]),
-                make_attr(NS_ANDROID, idx["hardwareAccelerated"], 0xFFFFFFFF, TYPE_INT_BOOLEAN, 0xFFFFFFFF),
-                make_attr(NS_ANDROID, idx["usesCleartextTraffic"], 0xFFFFFFFF, TYPE_INT_BOOLEAN, 0xFFFFFFFF),
-            ],
-            8,
-        )
-    )
+    def val_ref(r: int) -> bytes:
+        return struct.pack("<HBBI", 8, 0, 0x01, r)
 
-    # <activity android:name="com.fde.salescopilot.MainActivity" android:exported="true" android:configChanges="0x0db0">
-    # 0x0db0 = orientation(0x0080) | screenSize(0x0400) | keyboardHidden(0x0020) | smallestScreenSize(0x0800) | screenLayout(0x0100)
-    xml_chunks.append(
-        start_elem(
-            idx["activity"],
-            [
-                make_attr(
-                    NS_ANDROID,
-                    idx["name"],
-                    idx["com.fde.salescopilot.MainActivity"],
-                    TYPE_STRING,
-                    idx["com.fde.salescopilot.MainActivity"],
-                ),
-                make_attr(NS_ANDROID, idx["exported"], 0xFFFFFFFF, TYPE_INT_BOOLEAN, 0xFFFFFFFF),
-                make_attr(NS_ANDROID, idx["configChanges"], 0xFFFFFFFF, TYPE_INT_HEX, 0x0DB0),
-            ],
-            10,
-        )
-    )
+    xml_chunks.append(start_ns(idx["android"], idx["http://schemas.android.com/apk/res/android"], 1))
 
-    # <intent-filter>
-    xml_chunks.append(start_elem(idx["intent-filter"], [], 12))
-    xml_chunks.append(
-        start_elem(
-            idx["action"],
-            [
-                make_attr(
-                    NS_ANDROID,
-                    idx["name"],
-                    idx["android.intent.action.MAIN"],
-                    TYPE_STRING,
-                    idx["android.intent.action.MAIN"],
-                )
-            ],
-            13,
-        )
-    )
-    xml_chunks.append(end_elem(idx["action"], 13))
-    xml_chunks.append(
-        start_elem(
-            idx["category"],
-            [
-                make_attr(
-                    NS_ANDROID,
-                    idx["name"],
-                    idx["android.intent.category.LAUNCHER"],
-                    TYPE_STRING,
-                    idx["android.intent.category.LAUNCHER"],
-                )
-            ],
-            14,
-        )
-    )
-    xml_chunks.append(end_elem(idx["category"], 14))
-    xml_chunks.append(end_elem(idx["intent-filter"], 15))
+    manifest_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["versionCode"], 0xFFFFFFFF, val_int(200)),
+        (0xFFFFFFFF, idx["package"], idx["com.fde.salescopilot"], val_string(idx["com.fde.salescopilot"])),
+    ]
+    xml_chunks.append(start_elem(idx["manifest"], manifest_attrs, 2))
 
-    xml_chunks.append(end_elem(idx["activity"], 16))
-    xml_chunks.append(end_elem(idx["application"], 18))
-    xml_chunks.append(end_elem(idx["manifest"], 19))
-    xml_chunks.append(end_ns(idx["android"], NS_ANDROID, 20))
+    sdk_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["minSdkVersion"], 0xFFFFFFFF, val_int(21)),
+        (idx["http://schemas.android.com/apk/res/android"], idx["targetSdkVersion"], 0xFFFFFFFF, val_int(34)),
+    ]
+    xml_chunks.append(start_elem(idx["uses-sdk"], sdk_attrs, 3))
+    xml_chunks.append(end_elem(idx["uses-sdk"], 3))
 
-    body = string_pool_chunk + res_map_chunk + b"".join(xml_chunks)
-    total_size = 8 + len(body)
-    return struct.pack("<HHI", 0x0003, 8, total_size) + body
+    perm_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["name"], idx["android.permission.INTERNET"], val_string(idx["android.permission.INTERNET"])),
+    ]
+    xml_chunks.append(start_elem(idx["uses-permission"], perm_attrs, 4))
+    xml_chunks.append(end_elem(idx["uses-permission"], 4))
+
+    app_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["label"], idx["FDE 随身销售参谋"], val_string(idx["FDE 随身销售参谋"])),
+        (idx["http://schemas.android.com/apk/res/android"], idx["hardwareAccelerated"], 0xFFFFFFFF, val_bool(True)),
+        (idx["http://schemas.android.com/apk/res/android"], idx["usesCleartextTraffic"], 0xFFFFFFFF, val_bool(True)),
+        (idx["http://schemas.android.com/apk/res/android"], idx["theme"], 0xFFFFFFFF, val_ref(0x01030007)),
+    ]
+    xml_chunks.append(start_elem(idx["application"], app_attrs, 5))
+
+    act_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["name"], idx["com.fde.salescopilot.MainActivity"], val_string(idx["com.fde.salescopilot.MainActivity"])),
+        (idx["http://schemas.android.com/apk/res/android"], idx["exported"], 0xFFFFFFFF, val_bool(True)),
+        (idx["http://schemas.android.com/apk/res/android"], idx["configChanges"], 0xFFFFFFFF, val_hex(0x0DB0)),
+    ]
+    xml_chunks.append(start_elem(idx["activity"], act_attrs, 6))
+
+    xml_chunks.append(start_elem(idx["intent-filter"], [], 7))
+    act_name_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["name"], idx["android.intent.action.MAIN"], val_string(idx["android.intent.action.MAIN"])),
+    ]
+    xml_chunks.append(start_elem(idx["action"], act_name_attrs, 8))
+    xml_chunks.append(end_elem(idx["action"], 8))
+
+    cat_name_attrs = [
+        (idx["http://schemas.android.com/apk/res/android"], idx["name"], idx["android.intent.category.LAUNCHER"], val_string(idx["android.intent.category.LAUNCHER"])),
+    ]
+    xml_chunks.append(start_elem(idx["category"], cat_name_attrs, 9))
+    xml_chunks.append(end_elem(idx["category"], 9))
+    xml_chunks.append(end_elem(idx["intent-filter"], 10))
+
+    xml_chunks.append(end_elem(idx["activity"], 11))
+    xml_chunks.append(end_elem(idx["application"], 12))
+    xml_chunks.append(end_elem(idx["manifest"], 13))
+    xml_chunks.append(end_ns(idx["android"], idx["http://schemas.android.com/apk/res/android"], 14))
+
+    body_bytes = string_pool_chunk + res_map_chunk + b"".join(xml_chunks)
+    total_file_size = 8 + len(body_bytes)
+    file_header = struct.pack("<HHI", 0x0003, 8, total_file_size)
+    return file_header + body_bytes
 
 
 # ==============================================================================
-# PART 3: Valid Dalvik Executable (classes.dex) Builder
+# PART 3: Build Dalvik Executable (classes.dex)
 # ==============================================================================
-def uleb128(value: int) -> bytes:
-    out = bytearray()
-    while True:
-        byte = value & 0x7F
-        value >>= 7
-        if value != 0:
-            byte |= 0x80
-            out.append(byte)
-        else:
-            out.append(byte)
-            break
-    return bytes(out)
-
-
 def build_classes_dex(app_url: str) -> bytes:
-    """
-    Constructs a valid Dalvik Executable (DEX 035) containing:
-    package com.fde.salescopilot;
-    public class MainActivity extends android.app.Activity {
-        public MainActivity() { super(); }
-        protected void onCreate(android.os.Bundle b) {
-            super.onCreate(b);
-            WebView wv = new WebView(this);
-            WebSettings ws = wv.getSettings();
-            ws.setJavaScriptEnabled(true);
-            ws.setDomStorageEnabled(true);
-            ws.setUseWideViewPort(true);
-            ws.setLoadWithOverviewMode(true);
-            wv.setWebViewClient(new WebViewClient());
-            wv.loadUrl(app_url);
-            this.setContentView(wv);
-        }
-    }
-    """
     raw_strings = [
         "<init>",
         "L",
@@ -483,11 +386,12 @@ def build_classes_dex(app_url: str) -> bytes:
         "setJavaScriptEnabled",
         "setLoadWithOverviewMode",
         "setUseWideViewPort",
+        "setAllowFileAccess",
+        "setAllowContentAccess",
+        "setAllowFileAccessFromFileURLs",
+        "setAllowUniversalAccessFromFileURLs",
         "setWebViewClient",
     ]
-    strings = sorted(set(raw_strings))
-    s_idx = {s: i for i, s in enumerate(strings)}
-
     type_names = [
         "Landroid/app/Activity;",
         "Landroid/content/Context;",
@@ -501,14 +405,12 @@ def build_classes_dex(app_url: str) -> bytes:
         "V",
         "Z",
     ]
-    # Ensure all type_names are in strings
     strings = sorted(set(raw_strings + type_names + ["Ljava/lang/String;"]))
     s_idx = {s: i for i, s in enumerate(strings)}
 
     types = sorted(type_names)
     t_idx = {t: i for i, t in enumerate(types)}
 
-    # Protos: (shorty_str, return_type_str, [param_type_strs])
     proto_defs = [
         ("L", "Landroid/webkit/WebSettings;", []),
         ("V", "V", []),
@@ -522,11 +424,14 @@ def build_classes_dex(app_url: str) -> bytes:
     proto_defs.sort(key=lambda p: (t_idx[p[1]], [t_idx[x] for x in p[2]]))
     p_idx = {(p[1], tuple(p[2])): i for i, p in enumerate(proto_defs)}
 
-    # Methods: (class_type_str, name_str, return_type_str, (param_types...))
     method_defs = [
         ("Landroid/app/Activity;", "<init>", "V", ()),
         ("Landroid/app/Activity;", "onCreate", "V", ("Landroid/os/Bundle;",)),
         ("Landroid/app/Activity;", "setContentView", "V", ("Landroid/view/View;",)),
+        ("Landroid/webkit/WebSettings;", "setAllowContentAccess", "V", ("Z",)),
+        ("Landroid/webkit/WebSettings;", "setAllowFileAccess", "V", ("Z",)),
+        ("Landroid/webkit/WebSettings;", "setAllowFileAccessFromFileURLs", "V", ("Z",)),
+        ("Landroid/webkit/WebSettings;", "setAllowUniversalAccessFromFileURLs", "V", ("Z",)),
         ("Landroid/webkit/WebSettings;", "setDomStorageEnabled", "V", ("Z",)),
         ("Landroid/webkit/WebSettings;", "setJavaScriptEnabled", "V", ("Z",)),
         ("Landroid/webkit/WebSettings;", "setLoadWithOverviewMode", "V", ("Z",)),
@@ -542,16 +447,10 @@ def build_classes_dex(app_url: str) -> bytes:
     method_defs.sort(key=lambda m: (t_idx[m[0]], s_idx[m[1]], p_idx[(m[2], m[3])]))
     m_idx = {(m[0], m[1], m[2], m[3]): i for i, m in enumerate(method_defs)}
 
-    # Dalvik bytecode for <init>()V:
-    # invoke-direct {p0}, Landroid/app/Activity;-><init>()V  (7010 <method_idx> 0000)
-    # return-void                                            (0e00)
     m_act_init = m_idx[("Landroid/app/Activity;", "<init>", "V", ())]
     insns_init = struct.pack("<HHH", 0x1070, m_act_init, 0x0000) + struct.pack("<H", 0x000E)
     code_init = struct.pack("<HHHHII", 1, 1, 1, 0, 0, len(insns_init) // 2) + insns_init
 
-    # Dalvik bytecode for onCreate(Landroid/os/Bundle;)V
-    # Registers: v0 (wv), v1 (ws/client/url), v2 (true), v3 (this/p0), v4 (bundle/p1)
-    # registers_size = 5, ins_size = 2, outs_size = 2
     m_super_oncreate = m_idx[("Landroid/app/Activity;", "onCreate", "V", ("Landroid/os/Bundle;",))]
     m_wv_init = m_idx[("Landroid/webkit/WebView;", "<init>", "V", ("Landroid/content/Context;",))]
     m_wv_settings = m_idx[("Landroid/webkit/WebView;", "getSettings", "Landroid/webkit/WebSettings;", ())]
@@ -559,6 +458,10 @@ def build_classes_dex(app_url: str) -> bytes:
     m_ws_dom = m_idx[("Landroid/webkit/WebSettings;", "setDomStorageEnabled", "V", ("Z",))]
     m_ws_wide = m_idx[("Landroid/webkit/WebSettings;", "setUseWideViewPort", "V", ("Z",))]
     m_ws_overview = m_idx[("Landroid/webkit/WebSettings;", "setLoadWithOverviewMode", "V", ("Z",))]
+    m_ws_file = m_idx[("Landroid/webkit/WebSettings;", "setAllowFileAccess", "V", ("Z",))]
+    m_ws_content = m_idx[("Landroid/webkit/WebSettings;", "setAllowContentAccess", "V", ("Z",))]
+    m_ws_file_urls = m_idx[("Landroid/webkit/WebSettings;", "setAllowFileAccessFromFileURLs", "V", ("Z",))]
+    m_ws_univ_urls = m_idx[("Landroid/webkit/WebSettings;", "setAllowUniversalAccessFromFileURLs", "V", ("Z",))]
     m_wvc_init = m_idx[("Landroid/webkit/WebViewClient;", "<init>", "V", ())]
     m_wv_client = m_idx[("Landroid/webkit/WebView;", "setWebViewClient", "V", ("Landroid/webkit/WebViewClient;",))]
     m_wv_load = m_idx[("Landroid/webkit/WebView;", "loadUrl", "V", ("Ljava/lang/String;",))]
@@ -569,186 +472,176 @@ def build_classes_dex(app_url: str) -> bytes:
     s_url = s_idx[app_url]
 
     insns_oncreate = b"".join([
-        # invoke-super {v3, v4}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
         struct.pack("<HHH", 0x206F, m_super_oncreate, 0x0043),
-        # new-instance v0, Landroid/webkit/WebView;
         struct.pack("<HH", 0x0022, t_wv),
-        # invoke-direct {v0, v3}, Landroid/webkit/WebView;-><init>(Landroid/content/Context;)V
         struct.pack("<HHH", 0x2070, m_wv_init, 0x0030),
-        # invoke-virtual {v0}, Landroid/webkit/WebView;->getSettings()Landroid/webkit/WebSettings;
         struct.pack("<HHH", 0x106E, m_wv_settings, 0x0000),
-        # move-result-object v1
         struct.pack("<H", 0x010C),
-        # const/4 v2, 0x1
         struct.pack("<H", 0x1212),
-        # invoke-virtual {v1, v2}, WebSettings->setJavaScriptEnabled(Z)V
         struct.pack("<HHH", 0x206E, m_ws_js, 0x0021),
-        # invoke-virtual {v1, v2}, WebSettings->setDomStorageEnabled(Z)V
         struct.pack("<HHH", 0x206E, m_ws_dom, 0x0021),
-        # invoke-virtual {v1, v2}, WebSettings->setUseWideViewPort(Z)V
         struct.pack("<HHH", 0x206E, m_ws_wide, 0x0021),
-        # invoke-virtual {v1, v2}, WebSettings->setLoadWithOverviewMode(Z)V
         struct.pack("<HHH", 0x206E, m_ws_overview, 0x0021),
-        # new-instance v1, Landroid/webkit/WebViewClient;
+        struct.pack("<HHH", 0x206E, m_ws_file, 0x0021),
+        struct.pack("<HHH", 0x206E, m_ws_content, 0x0021),
+        struct.pack("<HHH", 0x206E, m_ws_file_urls, 0x0021),
+        struct.pack("<HHH", 0x206E, m_ws_univ_urls, 0x0021),
         struct.pack("<HH", 0x0122, t_wvc),
-        # invoke-direct {v1}, Landroid/webkit/WebViewClient;-><init>()V
         struct.pack("<HHH", 0x1070, m_wvc_init, 0x0001),
-        # invoke-virtual {v0, v1}, WebView->setWebViewClient(WebViewClient)V
         struct.pack("<HHH", 0x206E, m_wv_client, 0x0010),
-        # const-string v1, app_url
         struct.pack("<HH", 0x011A, s_url),
-        # invoke-virtual {v0, v1}, WebView->loadUrl(String)V
         struct.pack("<HHH", 0x206E, m_wv_load, 0x0010),
-        # invoke-virtual {v3, v0}, Activity->setContentView(View)V
         struct.pack("<HHH", 0x206E, m_act_content, 0x0003),
-        # return-void
         struct.pack("<H", 0x000E),
     ])
     code_oncreate = struct.pack("<HHHHII", 5, 2, 2, 0, 0, len(insns_oncreate) // 2) + insns_oncreate
 
-    # Layout fixed header & index tables:
-    # Header: 0x70 (112 bytes)
     off_string_ids = 0x70
     off_type_ids = off_string_ids + 4 * len(strings)
     off_proto_ids = off_type_ids + 4 * len(types)
     off_method_ids = off_proto_ids + 12 * len(proto_defs)
     off_class_defs = off_method_ids + 8 * len(method_defs)
-    off_data = off_class_defs + 32  # 1 class_def
+    off_data = off_class_defs + 32
 
     data_buf = bytearray()
-
     def align4():
         while (off_data + len(data_buf)) % 4 != 0:
             data_buf.append(0)
 
-    # 1. type_lists for protos with parameters
     proto_param_offs = []
     for shorty, ret_t, params in proto_defs:
         if not params:
             proto_param_offs.append(0)
         else:
             align4()
-            poff = off_data + len(data_buf)
-            proto_param_offs.append(poff)
-            data_buf.extend(struct.pack("<I", len(params)))
-            for pt in params:
-                data_buf.extend(struct.pack("<H", t_idx[pt]))
+            proto_param_offs.append(off_data + len(data_buf))
+            data_buf += struct.pack("<I", len(params))
+            for p in params:
+                data_buf += struct.pack("<H", t_idx[p])
 
-    # 2. code_items (4-byte aligned)
+    def encode_uleb128(val: int) -> bytes:
+        out = bytearray()
+        while True:
+            byte = val & 0x7F
+            val >>= 7
+            if val != 0:
+                byte |= 0x80
+            out.append(byte)
+            if val == 0:
+                break
+        return bytes(out)
+
+    string_data_offs = []
+    for s in strings:
+        utf8 = s.encode("utf-8")
+        entry = encode_uleb128(len(s)) + utf8 + b"\x00"
+        string_data_offs.append(off_data + len(data_buf))
+        data_buf += entry
+
     align4()
     off_code_init = off_data + len(data_buf)
-    data_buf.extend(code_init)
+    data_buf += code_init
 
     align4()
     off_code_oncreate = off_data + len(data_buf)
-    data_buf.extend(code_oncreate)
+    data_buf += code_oncreate
 
-    # 3. string_data_items
-    string_data_offs = []
-    for s in strings:
-        string_data_offs.append(off_data + len(data_buf))
-        utf8_bytes = s.encode("utf-8")
-        data_buf.extend(uleb128(len(s)))
-        data_buf.extend(utf8_bytes)
-        data_buf.append(0)
-
-    # 4. class_data_item
+    align4()
     off_class_data = off_data + len(data_buf)
     m_main_init = m_idx[("Lcom/fde/salescopilot/MainActivity;", "<init>", "V", ())]
     m_main_oncreate = m_idx[("Lcom/fde/salescopilot/MainActivity;", "onCreate", "V", ("Landroid/os/Bundle;",))]
-    class_data_item = (
-        uleb128(0)  # static_fields_size
-        + uleb128(0)  # instance_fields_size
-        + uleb128(1)  # direct_methods_size (<init>)
-        + uleb128(1)  # virtual_methods_size (onCreate)
-        # direct_method[0]: <init>, access=PUBLIC|CONSTRUCTOR (0x10001)
-        + uleb128(m_main_init)
-        + uleb128(0x10001)
-        + uleb128(off_code_init)
-        # virtual_method[0]: onCreate, access=PROTECTED (0x0004)
-        + uleb128(m_main_oncreate)
-        + uleb128(0x0004)
-        + uleb128(off_code_oncreate)
+
+    class_data_bytes = (
+        encode_uleb128(0)
+        + encode_uleb128(0)
+        + encode_uleb128(2)
+        + encode_uleb128(0)
+        + encode_uleb128(m_main_init)
+        + encode_uleb128(0x10001)
+        + encode_uleb128(off_code_init)
+        + encode_uleb128(m_main_oncreate - m_main_init)
+        + encode_uleb128(0x0004)
+        + encode_uleb128(off_code_oncreate)
     )
-    data_buf.extend(class_data_item)
+    data_buf += class_data_bytes
 
-    # 5. map_list (4-byte aligned at end of data section)
-    align4()
-    off_map_list = off_data + len(data_buf)
-    map_items = [
-        (0x0000, 1, 0x00000000),            # TYPE_HEADER_ITEM
-        (0x0001, len(strings), off_string_ids),
-        (0x0002, len(types), off_type_ids),
-        (0x0003, len(proto_defs), off_proto_ids),
-        (0x0005, len(method_defs), off_method_ids),
-        (0x0006, 1, off_class_defs),
-        (0x1001, sum(1 for x in proto_param_offs if x != 0), next(x for x in proto_param_offs if x != 0)),
-        (0x2001, 2, off_code_init),
-        (0x2002, len(strings), string_data_offs[0]),
-        (0x2000, 1, off_class_data),
-        (0x1000, 1, off_map_list),
-    ]
-    data_buf.extend(struct.pack("<I", len(map_items)))
-    for m_type, m_size, m_off in map_items:
-        data_buf.extend(struct.pack("<HHII", m_type, 0, m_size, m_off))
-
-    file_size = off_data + len(data_buf)
     data_size = len(data_buf)
+    file_size = off_data + data_size
 
-    # Assemble index tables
-    string_ids_bin = b"".join(struct.pack("<I", o) for o in string_data_offs)
-    type_ids_bin = b"".join(struct.pack("<I", s_idx[t]) for t in types)
-    proto_ids_bin = b"".join(
-        struct.pack("<III", s_idx[p[0]], t_idx[p[1]], proto_param_offs[i])
-        for i, p in enumerate(proto_defs)
+    string_ids = b"".join(struct.pack("<I", off) for off in string_data_offs)
+    type_ids = b"".join(struct.pack("<I", s_idx[t]) for t in types)
+    proto_ids = b"".join(
+        struct.pack("<III", s_idx[shorty], t_idx[ret_t], proto_param_offs[i])
+        for i, (shorty, ret_t, params) in enumerate(proto_defs)
     )
-    method_ids_bin = b"".join(
-        struct.pack("<HHI", t_idx[m[0]], p_idx[(m[2], m[3])], s_idx[m[1]])
-        for m in method_defs
+    method_ids = b"".join(
+        struct.pack("<HHI", t_idx[cls_t], p_idx[(ret_t, tuple(params))], s_idx[name])
+        for cls_t, name, ret_t, params in method_defs
     )
-    class_defs_bin = struct.pack(
+    class_def = struct.pack(
         "<IIIIIIII",
-        t_idx["Lcom/fde/salescopilot/MainActivity;"],  # class_idx
-        0x0001,                                        # PUBLIC
-        t_idx["Landroid/app/Activity;"],               # superclass_idx
-        0,                                             # interfaces_off
-        0xFFFFFFFF,                                    # source_file_idx
-        0,                                             # annotations_off
-        off_class_data,                                # class_data_off
-        0,                                             # static_values_off
+        t_idx["Lcom/fde/salescopilot/MainActivity;"],
+        0x0001,
+        t_idx["Landroid/app/Activity;"],
+        0,
+        s_idx["Lcom/fde/salescopilot/MainActivity;"],
+        0,
+        off_class_data,
+        0,
     )
 
-    header_prefix = b"dex\n035\x00"
-    header_rest = struct.pack(
-        "<20I",
-        file_size,
-        0x70,            # header_size
-        0x12345678,      # endian_tag
-        0,               # link_size
-        0,               # link_off
-        off_map_list,    # map_off
-        len(strings), off_string_ids,
-        len(types), off_type_ids,
-        len(proto_defs), off_proto_ids,
-        0, 0,            # field_ids
-        len(method_defs), off_method_ids,
-        1, off_class_defs,
-        data_size, off_data,
+    header = bytearray(0x70)
+    header[0:8] = b"dex\n035\x00"
+    struct.pack_into("<I", header, 0x20, file_size)
+    struct.pack_into("<I", header, 0x24, 0x70)
+    struct.pack_into("<I", header, 0x28, 0x12345678)
+
+    struct.pack_into("<II", header, 0x38, len(strings), off_string_ids)
+    struct.pack_into("<II", header, 0x40, len(types), off_type_ids)
+    struct.pack_into("<II", header, 0x48, len(proto_defs), off_proto_ids)
+    struct.pack_into("<II", header, 0x58, len(method_defs), off_method_ids)
+    struct.pack_into("<II", header, 0x60, 1, off_class_defs)
+    struct.pack_into("<II", header, 0x68, data_size, off_data)
+
+    payload_before_sig = (
+        string_ids
+        + type_ids
+        + proto_ids
+        + method_ids
+        + class_def
+        + bytes(data_buf)
     )
+    full_for_sig = header[32:] + payload_before_sig
+    sig = hashlib.sha1(full_for_sig).digest()
+    header[12:32] = sig
 
-    body_after_sig = header_rest + string_ids_bin + type_ids_bin + proto_ids_bin + method_ids_bin + class_defs_bin + bytes(data_buf)
-    sha1_digest = hashlib.sha1(body_after_sig).digest()
-    adler = zlib.adler32(sha1_digest + body_after_sig) & 0xFFFFFFFF
+    chk = zlib.adler32(header[12:] + payload_before_sig) & 0xFFFFFFFF
+    struct.pack_into("<I", header, 8, chk)
 
-    return header_prefix + struct.pack("<I", adler) + sha1_digest + body_after_sig
+    return bytes(header) + payload_before_sig
 
 
 # ==============================================================================
-# PART 4: Build & Sign APK (v1 JAR Signature + APK Signature Scheme v2)
+# PART 4: Build & Sign Standalone APK (v1 JAR Signature + APK Signature Scheme v2)
 # ==============================================================================
 def sign_and_build_apk(apk_out_path: str):
     axml_bytes = build_binary_axml()
     dex_bytes = build_classes_dex(APP_URL)
+
+    # Collect all dist files to embed into assets/
+    asset_files = []
+    if os.path.exists(DIST_DIR):
+        for root, _, filenames in os.walk(DIST_DIR):
+            for f in filenames:
+                if f.endswith(".apk") or f.endswith(".zip") or f.endswith(".tar.gz"):
+                    continue
+                full_path = os.path.join(root, f)
+                rel_path = os.path.relpath(full_path, DIST_DIR)
+                zip_entry_name = f"assets/{rel_path}"
+                with open(full_path, "rb") as fp:
+                    asset_files.append((zip_entry_name, fp.read()))
+    else:
+        print(f"Warning: {DIST_DIR} not found, APK will have minimal assets")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         key_pem = os.path.join(tmpdir, "key.pem")
@@ -774,29 +667,34 @@ def sign_and_build_apk(apk_out_path: str):
             stderr=subprocess.DEVNULL,
         )
 
-        # Build v1 JAR Signature (META-INF/MANIFEST.MF, CERT.SF, CERT.RSA)
-        axml_b64 = base64.b64encode(hashlib.sha256(axml_bytes).digest()).decode("ascii")
-        dex_b64 = base64.b64encode(hashlib.sha256(dex_bytes).digest()).decode("ascii")
+        # Build v1 JAR Signature entries for AndroidManifest.xml, classes.dex, and all assets/*
+        manifest_entries = []
+        sf_entries = []
 
-        manifest_Entry_1 = f"Name: AndroidManifest.xml\r\nSHA-256-Digest: {axml_b64}\r\n\r\n".encode("utf-8")
-        manifest_Entry_2 = f"Name: classes.dex\r\nSHA-256-Digest: {dex_b64}\r\n\r\n".encode("utf-8")
+        all_zip_payloads = [
+            ("AndroidManifest.xml", axml_bytes),
+            ("classes.dex", dex_bytes),
+        ] + asset_files
+
+        for entry_name, data in all_zip_payloads:
+            b64 = base64.b64encode(hashlib.sha256(data).digest()).decode("ascii")
+            mf_chunk = f"Name: {entry_name}\r\nSHA-256-Digest: {b64}\r\n\r\n".encode("utf-8")
+            manifest_entries.append(mf_chunk)
+
+            chunk_digest = base64.b64encode(hashlib.sha256(mf_chunk).digest()).decode("ascii")
+            sf_chunk = f"Name: {entry_name}\r\nSHA-256-Digest: {chunk_digest}\r\n\r\n".encode("utf-8")
+            sf_entries.append(sf_chunk)
+
         manifest_header = b"Manifest-Version: 1.0\r\nCreated-By: 1.0 (Android)\r\n\r\n"
-        manifest_mf = manifest_header + manifest_Entry_1 + manifest_Entry_2
+        manifest_mf = manifest_header + b"".join(manifest_entries)
 
         main_digest = base64.b64encode(hashlib.sha256(manifest_mf).digest()).decode("ascii")
-        e1_digest = base64.b64encode(hashlib.sha256(manifest_Entry_1).digest()).decode("ascii")
-        e2_digest = base64.b64encode(hashlib.sha256(manifest_Entry_2).digest()).decode("ascii")
-
         cert_sf = (
             f"Signature-Version: 1.0\r\n"
             f"Created-By: 1.0 (Android)\r\n"
             f"SHA-256-Digest-Manifest: {main_digest}\r\n"
             f"X-Android-APK-Signed: 2\r\n\r\n"
-            f"Name: AndroidManifest.xml\r\n"
-            f"SHA-256-Digest: {e1_digest}\r\n\r\n"
-            f"Name: classes.dex\r\n"
-            f"SHA-256-Digest: {e2_digest}\r\n\r\n"
-        ).encode("utf-8")
+        ).encode("utf-8") + b"".join(sf_entries)
 
         sf_path = os.path.join(tmpdir, "CERT.SF")
         rsa_path = os.path.join(tmpdir, "CERT.RSA")
@@ -816,11 +714,11 @@ def sign_and_build_apk(apk_out_path: str):
         with open(rsa_path, "rb") as f:
             cert_rsa = f.read()
 
-        # First create standard ZIP with AndroidManifest.xml, classes.dex, and META-INF/*
+        # Build full unsigned APK with assets
         unsigned_zip_path = os.path.join(tmpdir, "base.apk")
         with zipfile.ZipFile(unsigned_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("AndroidManifest.xml", axml_bytes)
-            zf.writestr("classes.dex", dex_bytes)
+            for entry_name, data in all_zip_payloads:
+                zf.writestr(entry_name, data)
             zf.writestr("META-INF/MANIFEST.MF", manifest_mf)
             zf.writestr("META-INF/CERT.SF", cert_sf)
             zf.writestr("META-INF/CERT.RSA", cert_rsa)
@@ -837,7 +735,7 @@ def sign_and_build_apk(apk_out_path: str):
         cd_bytes = zip_bytes[cd_offset:eocd_pos]
         eocd_bytes = bytearray(zip_bytes[eocd_pos:])
 
-        # Compute APK Signature Scheme v2 digest (ID = 0x7109871a, Content Digest Algorithm = 0x0103 RSA_PKCS1_V1_5_WITH_SHA256)
+        # Compute APK Signature Scheme v2 digest
         def chunk_digests(sections):
             chunk_hashes = []
             total_chunks = 0
@@ -852,7 +750,6 @@ def sign_and_build_apk(apk_out_path: str):
             top_input = b"\x5a" + struct.pack("<I", total_chunks) + b"".join(chunk_hashes)
             return hashlib.sha256(top_input).digest()
 
-        # In APK Signature Scheme v2, the EOCD section has its CD offset field set to the offset of the APK Signing Block (= cd_offset)
         eocd_for_hash = bytearray(eocd_bytes)
         struct.pack_into("<I", eocd_for_hash, 16, cd_offset)
         top_digest = chunk_digests([before_cd, cd_bytes, bytes(eocd_for_hash)])
@@ -860,7 +757,6 @@ def sign_and_build_apk(apk_out_path: str):
         with open(cert_der, "rb") as f:
             cert_der_bytes = f.read()
 
-        # Extract SubjectPublicKeyInfo (DER)
         spki_der = subprocess.check_output(
             ["openssl", "x509", "-in", cert_pem, "-pubkey", "-noout"],
             stderr=subprocess.DEVNULL,
@@ -876,11 +772,10 @@ def sign_and_build_apk(apk_out_path: str):
         def lp(b: bytes) -> bytes:
             return struct.pack("<I", len(b)) + b
 
-        # digest entry: uint32 algo_id (0x0103 = RSA_PKCS1_V1_5_WITH_SHA256), lp(digest)
         digest_entry = struct.pack("<I", 0x0103) + lp(top_digest)
         digests_seq = lp(digest_entry)
         certs_seq = lp(cert_der_bytes)
-        attrs_seq = b""  # empty additional attributes
+        attrs_seq = b""
 
         signed_data = lp(digests_seq) + lp(certs_seq) + lp(attrs_seq)
         signed_data_path = os.path.join(tmpdir, "signed_data.bin")
@@ -904,9 +799,7 @@ def sign_and_build_apk(apk_out_path: str):
         signers_seq = lp(signer)
         v2_block_value = lp(signers_seq)
 
-        # Pair: uint64 len(id + value), uint32 id (0x7109871a), value
         pair = struct.pack("<QI", 4 + len(v2_block_value), 0x7109871A) + v2_block_value
-        # Pad APK Signing Block so total block size is a multiple of 4096 if desired, or 8-byte aligned
         block_size_excluding_first8 = len(pair) + 8 + 16
         apk_sig_block = (
             struct.pack("<Q", block_size_excluding_first8)
@@ -936,7 +829,7 @@ def main():
 
     apk_path = os.path.join(PUBLIC_DIR, "FDE-Sales-Copilot-v2.0.apk")
     sign_and_build_apk(apk_path)
-    print(f"Generated icons and signed APK ({os.path.getsize(apk_path)} bytes) at {apk_path}")
+    print(f"Generated icons and standalone signed APK ({os.path.getsize(apk_path)} bytes) at {apk_path}")
 
 
 if __name__ == "__main__":

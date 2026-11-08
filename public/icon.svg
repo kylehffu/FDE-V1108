@@ -1,25 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#020617" />
-      <stop offset="50%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#083344" />
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#091e3a"/>
+      <stop offset="100%" stop-color="#022c44"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22d3ee" />
-      <stop offset="100%" stop-color="#10b981" />
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="blue-edge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)" />
-  <rect x="28" y="28" width="456" height="456" rx="92" fill="none" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="6" />
-  <!-- Topology Network Nodes -->
-  <line x1="256" y1="128" x2="156" y2="256" stroke="#22d3ee" stroke-width="10" stroke-linecap="round" opacity="0.85" />
-  <line x1="256" y1="128" x2="356" y2="256" stroke="#22d3ee" stroke-width="10" stroke-linecap="round" opacity="0.85" />
-  <line x1="156" y1="256" x2="256" y2="372" stroke="#10b981" stroke-width="10" stroke-linecap="round" opacity="0.9" />
-  <line x1="356" y1="256" x2="256" y2="372" stroke="#22d3ee" stroke-width="8" stroke-dasharray="14 10" stroke-linecap="round" opacity="0.7" />
-  <circle cx="256" cy="128" r="32" fill="#0f172a" stroke="#22d3ee" stroke-width="12" />
-  <circle cx="156" cy="256" r="30" fill="#0f172a" stroke="#10b981" stroke-width="12" />
-  <circle cx="356" cy="256" r="28" fill="#0f172a" stroke="#38bdf8" stroke-width="10" />
-  <circle cx="256" cy="372" r="34" fill="url(#accent)" />
-  <text x="256" y="456" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="44" fill="#f8fafc" letter-spacing="4">FDE 2B</text>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#0e7490" stroke-width="2" stroke-dasharray="8 8" opacity="0.4"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#22d3ee" stroke-width="2" opacity="0.3"/>
+  <line x1="256" y1="120" x2="170" y2="210" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="256" y1="120" x2="342" y2="210" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="170" y1="210" x2="200" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="342" y1="210" x2="312" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="200" y1="330" x2="312" y2="330" stroke="url(#blue-edge)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="170" y1="210" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="342" y1="210" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="200" y1="330" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="312" y1="330" x2="256" y2="256" stroke="#22d3ee" stroke-width="2.5" opacity="0.9"/>
+  <line x1="256" y1="120" x2="256" y2="256" stroke="#22d3ee" stroke-width="3" opacity="0.9"/>
+  <circle cx="256" cy="120" r="18" fill="url(#cyan-glow)"/>
+  <circle cx="170" cy="210" r="15" fill="#38bdf8"/>
+  <circle cx="342" cy="210" r="15" fill="#38bdf8"/>
+  <circle cx="200" cy="330" r="15" fill="#0284c7"/>
+  <circle cx="312" cy="330" r="15" fill="#0284c7"/>
+  <circle cx="256" cy="256" r="26" fill="url(#cyan-glow)"/>
+  <path d="M256 244 L259 253 L268 256 L259 259 L256 268 L253 259 L244 256 L253 253 Z" fill="#ffffff"/>
+  <text x="256" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="800" fill="#22d3ee" text-anchor="middle" letter-spacing="4">FDE 销售参谋</text>
+  <text x="256" y="454" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="#94a3b8" text-anchor="middle" letter-spacing="2">全行业 2B 顾问式作战底座</text>
 </svg>
