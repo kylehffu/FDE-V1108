@@ -29,7 +29,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (json && json.provider) {
         const p = json.provider;
         const providerName =
-          p === 'deepseek'
+          p === 'nvidia'
+            ? 'NVIDIA'
+            : p === 'deepseek'
             ? 'DeepSeek'
             : p === 'gemini'
             ? 'Gemini'

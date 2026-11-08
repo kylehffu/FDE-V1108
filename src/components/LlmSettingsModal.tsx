@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export interface LlmConfigData {
-  provider: 'gemini' | 'openai-compatible' | 'deepseek' | 'qwen' | 'custom' | 'mock';
+  provider: 'gemini' | 'openai-compatible' | 'deepseek' | 'qwen' | 'nvidia' | 'custom' | 'mock';
   apiKeyMasked: string;
   hasApiKey: boolean;
   baseUrl: string;
@@ -29,6 +29,22 @@ interface LlmSettingsModalProps {
 }
 
 const PROVIDER_PRESETS = [
+  {
+    id: 'nvidia',
+    name: 'NVIDIA NIM (build.nvidia.com)',
+    badge: '1000次免费·NVIDIA加速',
+    defaultBaseUrl: 'https://integrate.api.nvidia.com/v1',
+    defaultModel: 'deepseek-ai/deepseek-r1',
+    models: [
+      'deepseek-ai/deepseek-r1',
+      'meta/llama-3.3-70b-instruct',
+      'meta/llama-3.1-405b-instruct',
+      'qwen/qwen2.5-72b-instruct',
+      'mistralai/mixtral-8x22b-instruct-v0.1'
+    ],
+    help: 'NVIDIA 官方 NIM 微服务，注册即送免费额度，100% 兼容 OpenAI 标准协议，支持 DeepSeek-R1、Llama-3.3 等顶级模型。',
+    docsUrl: 'https://build.nvidia.com',
+  },
   {
     id: 'deepseek',
     name: 'DeepSeek (深度求索)',

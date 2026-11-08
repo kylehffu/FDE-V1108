@@ -36,7 +36,7 @@ if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
 // Persistent Runtime Configuration for Universal Multi-LLM API Gateway
 // ==============================================================================
 interface LlmRuntimeConfig {
-  provider: 'gemini' | 'openai-compatible' | 'deepseek' | 'qwen' | 'custom' | 'mock';
+  provider: 'gemini' | 'openai-compatible' | 'deepseek' | 'qwen' | 'nvidia' | 'custom' | 'mock';
   apiKey: string;
   baseUrl: string;
   model: string;
